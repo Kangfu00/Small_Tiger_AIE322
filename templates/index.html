@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Collection - Thai Digits 56-60</title>
+    <style>
+        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; background-color: #f0f0f0; }
+        .canvas-container { background: white; border: 2px solid #333; margin: 20px; cursor: crosshair; }
+        .controls { display: grid; gap: 10px; text-align: center; }
+        button { padding: 10px 20px; font-size: 16px; cursor: pointer; border-radius: 5px; border: none; }
+        .btn-save { background-color: #28a745; color: white; }
+        .btn-clear { background-color: #dc3545; color: white; }
+        select { padding: 10px; font-size: 16px; }
+    </style>
+</head>
+<body>
+
+    <h2>ระบบเก็บข้อมูลตัวเลขไทย (๕๖ - ๖๐)</h2>
+    
+    <div class="controls">
+        <label for="class-select">เลือกตัวเลขที่กำลังจะเขียน:</label>
+        <select id="class-select">
+            <option value="56">๕๖ (56)</option>
+            <option value="57">๕๗ (57)</option>
+            <option value="58">๕๘ (58)</option>
+            <option value="59">๕๙ (59)</option>
+            <option value="60">๖๐ (60)</option>
+        </select>
+    </div>
+
+    <div class="canvas-container">
+        <canvas id="canvas" width="280" height="280"></canvas>
+    </div>
+
+    <div class="controls">
+        <button class="btn-save" onclick="saveImage()">บันทึกข้อมูล (Save)</button>
+        <button class="btn-clear" onclick="clearCanvas()">ล้างหน้าจอ (Clear)</button>
+    </div>
+
+    <p id="status-msg"></p>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const classSelect = document.getElementById('class-select');
+        const statusMsg = document.getElementById('status-msg');
+        let isDrawing = false;
+
+        // ตั้งค่าเส้นวาด
+        ctx.lineWidth = 10;
+        ctx.lineCap = 'round';
+        ctx.strokeStyle = 'black';
+
+        // ฟังก์ชันเริ่มวาด
+        canvas.addEventListener('mousedown', (e) => { isDrawing = true; draw(e); });
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', () => { isDrawing = false; ctx.beginPath(); });
+
+        // รองรับระบบสัมผัส (Touch Screen)
+        canvas.addEventListener('touchstart', (e) => { e.preventDefault(); isDrawing = true; draw(e.touches[0]); });
+        canvas.addEventListener('touchmove', (e) => { e.preventDefault(); draw(e.touches[0]); });
+        canvas.addEventListener('touchend', () => { isDrawing = false; ctx.beginPath(); });
+
+        function draw(e) {
+            if (!isDrawing) return;
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX || e.pageX) - rect.left;
+            const y = (e.clientY || e.pageY) - rect.top;
+
+            ctx.lineTo(x, y);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+        }
+
+        function clearCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            statusMsg.innerText = "";
+        }
+
+        async function saveImage() {
+            const label = classSelect.value;
+            const dataURL = canvas.toDataURL('image/png'); // แปลงรูปเป็น Base64
+
+            statusMsg.innerText = "กำลังบันทึก...";
+
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ image: dataURL, label: label })
+                });
+
+                if (response.ok) {
+                    statusMsg.innerText = "บันทึกสำเร็จ! (Class " + label + ")";
+                    statusMsg.style.color = "green";
+                    setTimeout(clearCanvas, 1000); // ล้างจอหลังเซฟสำเร็จ 1 วินาที
+                } else {
+                    statusMsg.innerText = "เกิดข้อผิดพลาดในการบันทึก";
+                    statusMsg.style.color = "red";
+                }
+            } catch (err) {
+                console.error(err);
+                statusMsg.innerText = "ไม่สามารถเชื่อมต่อ Server ได้";
+            }
+        }
+    </script>
+</body>
+</html>
