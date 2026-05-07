@@ -4,13 +4,18 @@ import time
 from flask import Flask, render_template, request, jsonify
 from PIL import Image
 import io
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 
-# กำหนดเส้นทางหลักให้ถูกต้อง
+# --- การตั้งค่าเส้นทาง ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-# แนะนำให้เก็บ datasets ไว้ใน static เพื่อให้เรียกดูรูปผ่านหน้าเว็บได้ง่ายในอนาคต
 DATASET_DIR = os.path.join(BASE_DIR, 'static', 'datasets')
+MODEL_DIR = os.path.join(BASE_DIR, 'models') # โฟลเดอร์เก็บโมเดล
+
+# สร้างโฟลเดอร์ที่จำเป็นหากยังไม่มี
+os.makedirs(DATASET_DIR, exist_ok=True)
+os.makedirs(MODEL_DIR, exist_ok=True)
 
 @app.route('/')
 def index():
@@ -27,40 +32,58 @@ def upload_canvas():
         image_bytes = base64.b64decode(encoded)
         image = Image.open(io.BytesIO(image_bytes))
 
-        # แก้ไขปัญหาพื้นหลังโปร่งใส (ตามที่เคยแนะนำ)
-        # สร้างภาพพื้นหลังสีขาวขนาด 280x280 ก่อนนำรูปที่วาดมาวาง
+        # แก้ไขปัญหาพื้นหลังโปร่งใส
         background = Image.new("RGB", image.size, (255, 255, 255))
         if image.mode == 'RGBA':
-            background.paste(image, mask=image.split()[3]) # ใช้ Alpha channel เป็น mask
+            background.paste(image, mask=image.split()[3])
         else:
             background.paste(image)
         
-        # Preprocessing
+        # Preprocessing (28x28 grayscale)
         image = background.convert('L') 
         image = image.resize((28, 28), Image.LANCZOS)
 
-        # --- จุดแก้ไขสำคัญ: สร้างโฟลเดอร์ถ้ายังไม่มี ---
         target_dir = os.path.join(DATASET_DIR, label)
-        if not os.path.exists(target_dir):
-            os.makedirs(target_dir, exist_ok=True)
-        # ---------------------------------------
+        os.makedirs(target_dir, exist_ok=True)
 
         filename = f"{label}_{int(time.time() * 1000)}.png"
         save_path = os.path.join(target_dir, filename)
         image.save(save_path)
 
-        return jsonify({"message": "บันทึกสำเร็จ", "filename": filename}), 200
-
+        return jsonify({"message": "บันทึกข้อมูลสำเร็จ"}), 200
     except Exception as e:
-        print(f"Error: {e}")
         return jsonify({"error": str(e)}), 500
 
-# เพิ่ม Route /predict เพื่อไม่ให้หน้าเว็บค้างเวลาเผลอกดปุ่ม Predict
+# --- หน้าสำหรับ Admin อัปโหลดโมเดล ---
+@app.route('/admin_upload_model', methods=['POST'])
+def admin_upload_model():
+    try:
+        if 'model_file' not in request.files:
+            return jsonify({"error": "ไม่มีไฟล์ถูกส่งมา"}), 400
+        
+        file = request.files['model_file']
+        if file.filename == '':
+            return jsonify({"error": "ไม่ได้เลือกไฟล์"}), 400
+
+        # ตรวจสอบรหัสผ่านเบื้องต้น (เพื่อความปลอดภัย)
+        admin_pass = request.form.get('admin_pass')
+        if admin_pass != "1234": # คุณสามารถเปลี่ยนรหัสตรงนี้ได้
+            return jsonify({"error": "รหัสผ่านไม่ถูกต้อง"}), 403
+
+        if file:
+            # ใช้ชื่อมาตรฐานเพื่อให้โมเดลเรียกใช้ง่าย เช่น model_latest.h5
+            ext = os.path.splitext(file.filename)[1]
+            filename = "model_latest" + ext
+            file.save(os.path.join(MODEL_DIR, filename))
+            return jsonify({"message": f"อัปโหลดโมเดล {filename} สำเร็จแล้ว!"}), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @app.route('/predict', methods=['POST'])
 def predict():
-    # ส่วนนี้รอคุณใส่ Model AI ในอนาคต
-    return jsonify({"prediction": "ระบบทำนายยังไม่ติดตั้ง"})
+    # ในอนาคตคุณจะใช้โค้ดเรียกไฟล์จาก models/model_latest.h5 มาทายผล
+    return jsonify({"prediction": "โมเดลติดตั้งแล้ว (รอการเชื่อมต่อ logic)"})
 
 if __name__ == '__main__':
-    # รันบนเครื่องตัวเองใช้ debug=True เพื่อดู error อย่างละเอียด
     app.run(debug=True, port=5000)

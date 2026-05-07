@@ -6,6 +6,13 @@
     <title>Thai Digits AI - Collection & Prediction</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link href="https://fonts.googleapis.com/css2?family=Anuphan:wght@300;400;500&display=swap" rel="stylesheet">
+    <style>
+        /* เพิ่มเติมเล็กน้อยสำหรับหน้า Admin */
+        .admin-form { display: flex; flex-direction: column; gap: 15px; }
+        .file-input-wrapper { border: 2px dashed #dfe6e9; padding: 20px; border-radius: 12px; cursor: pointer; }
+        .file-input-wrapper:hover { border-color: #0984e3; }
+        input[type="password"] { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #dfe6e9; font-family: inherit; }
+    </style>
 </head>
 <body>
 
@@ -13,28 +20,25 @@
         <header>
             <h1>Thai Digits <span class="accent">๕๖-๖๐</span></h1>
             <nav>
-                <button onclick="showPage('collect')" id="btn-nav-collect" class="nav-link active">Collect Data</button>
+                <button onclick="showPage('collect')" id="btn-nav-collect" class="nav-link active">Collect</button>
                 <button onclick="showPage('predict')" id="btn-nav-predict" class="nav-link">Predict AI</button>
+                <button onclick="showPage('admin')" id="btn-nav-admin" class="nav-link">Admin</button>
             </nav>
         </header>
 
         <section id="collect-page" class="page-content">
             <div class="card">
-                <div class="instruction">เลือกตัวเลขที่ต้องการเขียนและเริ่มวาดลงในช่องด้านล่าง</div>
-                <div class="controls-top">
-                    <select id="class-select">
-                        <option value="56">๕๖ (56)</option>
-                        <option value="57">๕๗ (57)</option>
-                        <option value="58">๕๘ (58)</option>
-                        <option value="59">๕๙ (59)</option>
-                        <option value="60">๖๐ (60)</option>
-                    </select>
-                </div>
-
+                <div class="instruction">เลือกตัวเลขที่ต้องการเขียนและวาดลงในช่อง</div>
+                <select id="class-select">
+                    <option value="56">๕๖ (56)</option>
+                    <option value="57">๕๗ (57)</option>
+                    <option value="58">๕๘ (58)</option>
+                    <option value="59">๕๙ (59)</option>
+                    <option value="60">๖๐ (60)</option>
+                </select>
                 <div class="canvas-wrapper">
                     <canvas id="canvas-collect" width="280" height="280"></canvas>
                 </div>
-
                 <div class="button-group">
                     <button class="btn btn-secondary" onclick="clearCanvas('collect')">Clear</button>
                     <button class="btn btn-primary" onclick="saveImage()">Save Data</button>
@@ -46,16 +50,13 @@
         <section id="predict-page" class="page-content" style="display: none;">
             <div class="card">
                 <div class="instruction">วาดตัวเลขไทยเพื่อให้ AI ทำนายผล</div>
-                
                 <div class="canvas-wrapper">
                     <canvas id="canvas-predict" width="280" height="280"></canvas>
                 </div>
-
                 <div class="button-group">
                     <button class="btn btn-secondary" onclick="clearCanvas('predict')">Clear</button>
                     <button class="btn btn-accent" onclick="predictImage()">Predict Now</button>
                 </div>
-                
                 <div id="result-container" class="result-box" style="display: none;">
                     <span class="result-label">ผลการทำนาย:</span>
                     <span id="prediction-text" class="result-value">-</span>
@@ -63,57 +64,61 @@
                 <p id="status-predict" class="status-msg"></p>
             </div>
         </section>
+
+        <section id="admin-page" class="page-content" style="display: none;">
+            <div class="card">
+                <div class="instruction">สำหรับผู้ดูแลระบบ: อัปโหลดไฟล์โมเดล (.h5, .keras)</div>
+                <form id="upload-model-form" class="admin-form">
+                    <input type="password" id="admin-password" placeholder="ใส่รหัสผ่านเพื่อยืนยัน" required>
+                    <div class="file-input-wrapper" onclick="document.getElementById('model-file').click()">
+                        <span id="file-name-display">คลิกเพื่อเลือกไฟล์โมเดล</span>
+                        <input type="file" id="model-file" style="display: none;" onchange="updateFileName()">
+                    </div>
+                    <button type="button" class="btn btn-primary" onclick="uploadModel()">Upload Model</button>
+                </form>
+                <p id="status-admin" class="status-msg"></p>
+            </div>
+        </section>
     </div>
 
     <script>
-        // --- Navigation Logic ---
+        // --- Navigation ---
         function showPage(page) {
             document.querySelectorAll('.page-content').forEach(p => p.style.display = 'none');
             document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-            
             document.getElementById(page + '-page').style.display = 'block';
             document.getElementById('btn-nav-' + page).classList.add('active');
         }
 
-        // --- Canvas Logic ---
+        // --- Canvas Setup ---
         const setupCanvas = (id) => {
             const canvas = document.getElementById(id);
             const ctx = canvas.getContext('2d');
             let isDrawing = false;
-
-            ctx.lineWidth = 12;
-            ctx.lineCap = 'round';
-            ctx.strokeStyle = '#2d3436';
-            
-            // เติมพื้นหลังขาวทันทีเพื่อป้องกันภาพโปร่งใส (ตามที่เคยวิจารณ์ไว้)
-            ctx.fillStyle = "white";
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.lineWidth = 12; ctx.lineCap = 'round'; ctx.strokeStyle = '#2d3436';
+            ctx.fillStyle = "white"; ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             const getPos = (e) => {
                 const rect = canvas.getBoundingClientRect();
-                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-                return { x: clientX - rect.left, y: clientY - rect.top };
+                const cx = e.touches ? e.touches[0].clientX : e.clientX;
+                const cy = e.touches ? e.touches[0].clientY : e.clientY;
+                return { x: cx - rect.left, y: cy - rect.top };
             };
 
             const start = (e) => { isDrawing = true; draw(e); };
             const stop = () => { isDrawing = false; ctx.beginPath(); };
             const draw = (e) => {
                 if (!isDrawing) return;
-                const pos = getPos(e);
-                ctx.lineTo(pos.x, pos.y);
-                ctx.stroke();
-                ctx.beginPath();
-                ctx.moveTo(pos.x, pos.y);
+                const p = getPos(e);
+                ctx.lineTo(p.x, p.y); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(p.x, p.y);
             };
 
-            canvas.addEventListener('mousedown', start);
-            canvas.addEventListener('mousemove', draw);
+            canvas.addEventListener('mousedown', start); canvas.addEventListener('mousemove', draw);
             canvas.addEventListener('mouseup', stop);
             canvas.addEventListener('touchstart', (e) => { e.preventDefault(); start(e); });
             canvas.addEventListener('touchmove', (e) => { e.preventDefault(); draw(e); });
             canvas.addEventListener('touchend', stop);
-
             return { canvas, ctx };
         };
 
@@ -122,54 +127,83 @@
 
         function clearCanvas(type) {
             const obj = type === 'collect' ? collectObj : predictObj;
-            obj.ctx.fillStyle = "white";
-            obj.ctx.fillRect(0, 0, obj.canvas.width, obj.canvas.height);
+            obj.ctx.fillStyle = "white"; obj.ctx.fillRect(0, 0, obj.canvas.width, obj.canvas.height);
             document.getElementById('status-' + type).innerText = "";
             if(type === 'predict') document.getElementById('result-container').style.display = 'none';
         }
 
-        // --- API Calls ---
+        // --- API - Collect ---
         async function saveImage() {
             const label = document.getElementById('class-select').value;
             const dataURL = collectObj.canvas.toDataURL('image/png');
             const msg = document.getElementById('status-collect');
-            
             msg.innerText = "กำลังบันทึก...";
             try {
-                const response = await fetch('/upload', {
+                const res = await fetch('/upload', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ image: dataURL, label: label })
                 });
-                if (response.ok) {
-                    msg.innerText = "บันทึกสำเร็จ!";
-                    msg.style.color = "#27ae60";
+                if (res.ok) { 
+                    msg.innerText = "บันทึกสำเร็จ!"; msg.style.color = "#27ae60";
                     setTimeout(() => clearCanvas('collect'), 1000);
                 }
-            } catch (err) { msg.innerText = "Error: เชื่อมต่อเซิร์ฟเวอร์ไม่ได้"; }
+            } catch (e) { msg.innerText = "Error: เชื่อมต่อไม่ได้"; }
         }
 
+        // --- API - Predict ---
         async function predictImage() {
             const dataURL = predictObj.canvas.toDataURL('image/png');
-            const msg = document.getElementById('status-predict');
-            const resBox = document.getElementById('result-container');
             const resText = document.getElementById('prediction-text');
-
-            msg.innerText = "กำลังประมวลผล...";
+            const resBox = document.getElementById('result-container');
             try {
-                // สมมติว่าสร้าง route /predict ไว้ที่ Flask
-                const response = await fetch('/predict', {
+                const res = await fetch('/predict', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ image: dataURL })
                 });
-                const result = await response.json();
-                if (response.ok) {
-                    msg.innerText = "";
-                    resBox.style.display = "block";
-                    resText.innerText = result.prediction; // รับค่าจาก Flask
+                const data = await res.json();
+                resBox.style.display = "block";
+                resText.innerText = data.prediction;
+            } catch (e) { alert("Error"); }
+        }
+
+        // --- Admin Functions ---
+        function updateFileName() {
+            const file = document.getElementById('model-file').files[0];
+            document.getElementById('file-name-display').innerText = file ? file.name : "คลิกเพื่อเลือกไฟล์โมเดล";
+        }
+
+        async function uploadModel() {
+            const fileInput = document.getElementById('model-file');
+            const password = document.getElementById('admin-password').value;
+            const msg = document.getElementById('status-admin');
+
+            if (!fileInput.files[0] || !password) {
+                msg.innerText = "กรุณาเลือกไฟล์และใส่รหัสผ่าน";
+                msg.style.color = "red";
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('model_file', fileInput.files[0]);
+            formData.append('admin_pass', password);
+
+            msg.innerText = "กำลังอัปโหลด...";
+            try {
+                const res = await fetch('/admin_upload_model', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    msg.innerText = data.message;
+                    msg.style.color = "green";
+                } else {
+                    msg.innerText = data.error;
+                    msg.style.color = "red";
                 }
-            } catch (err) { msg.innerText = "Error: ไม่สามารถทำนายได้"; }
+            } catch (e) { msg.innerText = "เกิดข้อผิดพลาดในการเชื่อมต่อ"; }
         }
     </script>
 </body>
