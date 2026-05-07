@@ -67,11 +67,24 @@
 
         <section id="admin-page" class="page-content" style="display: none;">
             <div class="card">
-                <div class="instruction">สำหรับผู้ดูแลระบบ: อัปโหลดไฟล์โมเดล (.h5, .keras)</div>
-                <form id="upload-model-form" class="admin-form">
-                    <input type="password" id="admin-password" placeholder="ใส่รหัสผ่านเพื่อยืนยัน" required>
+                <div class="instruction">สำหรับผู้ดูแลระบบ: จัดการข้อมูลและโมเดล</div>
+                
+                <form id="admin-action-form" class="admin-form">
+                    <input type="password" id="admin-password-global" placeholder="ใส่รหัสผ่านเพื่อดำเนินการ" required>
+                    
+                    <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
+                    
+                    <div style="margin-bottom: 20px;">
+                        <p style="font-size: 0.9em; color: #636e72;">ดาวน์โหลดรูปภาพทั้งหมดที่มีในระบบ (.zip)</p>
+                        <button type="button" class="btn btn-secondary" style="width: 100%;" onclick="downloadDatasets()">
+                            📥 Download All Datasets
+                        </button>
+                    </div>
+
+                    <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
+
                     <div class="file-input-wrapper" onclick="document.getElementById('model-file').click()">
-                        <span id="file-name-display">คลิกเพื่อเลือกไฟล์โมเดล</span>
+                        <span id="file-name-display">คลิกเพื่อเลือกไฟล์โมเดลใหม่</span>
                         <input type="file" id="model-file" style="display: none;" onchange="updateFileName()">
                     </div>
                     <button type="button" class="btn btn-primary" onclick="uploadModel()">Upload Model</button>
@@ -80,6 +93,7 @@
             </div>
         </section>
     </div>
+
 
     <script>
         // --- Navigation ---
@@ -205,6 +219,53 @@
                 }
             } catch (e) { msg.innerText = "เกิดข้อผิดพลาดในการเชื่อมต่อ"; }
         }
+        
+        async function downloadDatasets() {
+            const password = document.getElementById('admin-password-global').value;
+            const msg = document.getElementById('status-admin');
+
+            if (!password) {
+                msg.innerText = "กรุณาใส่รหัสผ่าน";
+                msg.style.color = "red";
+                return;
+            }
+
+            msg.innerText = "กำลังเตรียมไฟล์ Zip... (อาจใช้เวลาครู่หนึ่ง)";
+            msg.style.color = "#0984e3";
+
+            try {
+                const formData = new FormData();
+                formData.append('admin_pass', password);
+
+                const res = await fetch('/admin_download_datasets', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (res.ok) {
+                    // เทคนิคการทำให้ Browser ดาวน์โหลดไฟล์จาก Blob
+                    const blob = await res.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = "datasets_backup.zip"; // ชื่อไฟล์ที่ผู้ใช้จะได้รับ
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    
+                    msg.innerText = "ดาวน์โหลดเริ่มขึ้นแล้ว!";
+                    msg.style.color = "green";
+                } else {
+                    const data = await res.json();
+                    msg.innerText = data.error || "รหัสผ่านไม่ถูกต้อง";
+                    msg.style.color = "red";
+                }
+            } catch (e) {
+                msg.innerText = "เกิดข้อผิดพลาดในการเชื่อมต่อ";
+                msg.style.color = "red";
+            }
+        }
+
     </script>
 </body>
 </html>

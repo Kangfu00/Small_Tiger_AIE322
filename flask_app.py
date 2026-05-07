@@ -85,5 +85,32 @@ def predict():
     # ในอนาคตคุณจะใช้โค้ดเรียกไฟล์จาก models/model_latest.h5 มาทายผล
     return jsonify({"prediction": "โมเดลติดตั้งแล้ว (รอการเชื่อมต่อ logic)"})
 
+import shutil # เพิ่มสำหรับบีบอัดไฟล์
+from flask import send_file # เพิ่มสำหรับส่งไฟล์ให้ดาวน์โหลด
+
+# --- เพิ่ม Route นี้ลงใน flask_app.py ---
+
+@app.route('/admin_download_datasets', methods=['POST'])
+def admin_download_datasets():
+    try:
+        # ตรวจสอบรหัสผ่าน (ใช้ตัวเดียวกับการอัปโหลดโมเดล)
+        admin_pass = request.form.get('admin_pass')
+        if admin_pass != "1234": 
+            return jsonify({"error": "รหัสผ่านไม่ถูกต้อง"}), 403
+
+        # กำหนดชื่อไฟล์ zip ที่จะสร้าง
+        zip_filename = "thai_digits_datasets"
+        zip_path = os.path.join(BASE_DIR, zip_filename)
+
+        # ทำการ Zip โฟลเดอร์ datasets (static/datasets)
+        # shutil.make_archive จะสร้างไฟล์ .zip ให้อัตโนมัติ
+        shutil.make_archive(zip_path, 'zip', DATASET_DIR)
+
+        # ส่งไฟล์ให้ผู้ใช้ดาวน์โหลด
+        return send_file(f"{zip_path}.zip", as_attachment=True)
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
