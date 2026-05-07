@@ -88,6 +88,17 @@
                         <input type="file" id="model-file" style="display: none;" onchange="updateFileName()">
                     </div>
                     <button type="button" class="btn btn-primary" onclick="uploadModel()">Upload Model</button>
+                    
+                    <div id="stats-container" style="margin-bottom: 20px;">
+                        <h3 style="font-size: 1.1em; margin-bottom: 10px;">📊 สถิติข้อมูลปัจจุบัน</h3>
+                        <div id="stats-list" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
+                            <p style="grid-column: span 2; color: #b2bec3;">กำลังโหลดข้อมูล...</p>
+                        </div>
+                        <button type="button" class="btn btn-secondary" style="margin-top: 10px; font-size: 0.8em; padding: 5px 10px;" onclick="loadStats()">
+                            🔄 อัปเดตตัวเลข
+                        </button>
+                    </div>
+
                 </form>
                 <p id="status-admin" class="status-msg"></p>
             </div>
@@ -263,6 +274,46 @@
             } catch (e) {
                 msg.innerText = "เกิดข้อผิดพลาดในการเชื่อมต่อ";
                 msg.style.color = "red";
+            }
+        }
+        // ฟังก์ชันสำหรับโหลดสถิติจำนวนภาพ
+        async function loadStats() {
+            const statsList = document.getElementById('stats-list');
+            try {
+                const res = await fetch('/admin_stats');
+                const data = await res.json();
+                
+                if (Object.keys(data).length === 0) {
+                    statsList.innerHTML = '<p style="grid-column: span 2;">ยังไม่มีข้อมูล</p>';
+                    return;
+                }
+
+                statsList.innerHTML = ''; // ล้างค่าเก่า
+                // เรียงลำดับคลาสตามตัวเลข
+                Object.keys(data).sort().forEach(label => {
+                    const item = document.createElement('div');
+                    item.style.cssText = "background: #f1f2f6; padding: 10px; border-radius: 8px; text-align: center;";
+                    item.innerHTML = `
+                        <div style="font-weight: bold; color: #0984e3;">คลาส ${label}</div>
+                        <div style="font-size: 1.2em;">${data[label]} ภาพ</div>
+                    `;
+                    statsList.appendChild(item);
+                });
+            } catch (e) {
+                statsList.innerHTML = '<p style="color: red;">โหลดสถิติไม่สำเร็จ</p>';
+            }
+        }
+
+        // เรียกใช้ loadStats ทุกครั้งที่เปิดหน้า Admin
+        // แก้ไขฟังก์ชัน showPage เดิมของคุณเพิ่มบรรทัดนี้เข้าไป:
+        function showPage(page) {
+            document.querySelectorAll('.page-content').forEach(p => p.style.display = 'none');
+            document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+            document.getElementById(page + '-page').style.display = 'block';
+            document.getElementById('btn-nav-' + page).classList.add('active');
+            
+            if (page === 'admin') {
+                loadStats(); // โหลดสถิติอัตโนมัติเมื่อกดเข้าหน้า Admin
             }
         }
 

@@ -111,6 +111,25 @@ def admin_download_datasets():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    
+# --- เพิ่ม Route นี้ลงใน flask_app.py ---
+
+@app.route('/admin_stats', methods=['GET'])
+def get_stats():
+    try:
+        stats = {}
+        # ลิสต์รายชื่อโฟลเดอร์ใน DATASET_DIR (เช่น 56, 57, ...)
+        if os.path.exists(DATASET_DIR):
+            for label in os.listdir(DATASET_DIR):
+                label_path = os.path.join(DATASET_DIR, label)
+                if os.path.isdir(label_path):
+                    # นับเฉพาะไฟล์ที่เป็น .png
+                    files = [f for f in os.listdir(label_path) if f.endswith('.png')]
+                    stats[label] = len(files)
+        
+        return jsonify(stats), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
