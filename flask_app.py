@@ -7,9 +7,10 @@ import io
 
 app = Flask(__name__)
 
-# กำหนดเส้นทางหลักของโฟลเดอร์เก็บข้อมูล
+# กำหนดเส้นทางหลักให้ถูกต้อง
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATASET_DIR = os.path.join(BASE_DIR, 'datasets')
+# แนะนำให้เก็บ datasets ไว้ใน static เพื่อให้เรียกดูรูปผ่านหน้าเว็บได้ง่ายในอนาคต
+DATASET_DIR = os.path.join(BASE_DIR, 'static', 'datasets')
 
 @app.route('/')
 def index():
@@ -19,29 +20,33 @@ def index():
 def upload_canvas():
     try:
         data = request.get_json()
-        image_data = data['image'] # รับ Base64 String
-        label = data['label']      # รับเลขคลาส (56, 57, 58, 59, 60)
+        image_data = data['image'] 
+        label = data['label']      
 
-        # 1. จัดการกับ Base64 String (ตัดส่วน prefix ออก)
-        # "data:image/png;base64,iVBORw0KG..." -> "iVBORw0KG..."
         header, encoded = image_data.split(",", 1)
-        
-        # 2. แปลงจาก String กลับเป็นข้อมูล Binary (รูปภาพ)
         image_bytes = base64.b64decode(encoded)
         image = Image.open(io.BytesIO(image_bytes))
 
-        # 3. Preprocessing: แปลงเป็น Grayscale และ Resize เป็น 28x28 (ตามมาตรฐาน CNN)
-        # หมายเหตุ: เราวาดบน 280x280 การย่อลงมาจะช่วยให้เส้นดูคมชัดและข้อมูลเล็กลง
-        image = image.convert('L') # แปลงเป็นขาวดำ (Grayscale)
+        # แก้ไขปัญหาพื้นหลังโปร่งใส (ตามที่เคยแนะนำ)
+        # สร้างภาพพื้นหลังสีขาวขนาด 280x280 ก่อนนำรูปที่วาดมาวาง
+        background = Image.new("RGB", image.size, (255, 255, 255))
+        if image.mode == 'RGBA':
+            background.paste(image, mask=image.split()[3]) # ใช้ Alpha channel เป็น mask
+        else:
+            background.paste(image)
+        
+        # Preprocessing
+        image = background.convert('L') 
         image = image.resize((28, 28), Image.LANCZOS)
 
-        # 4. ตั้งชื่อไฟล์ด้วย Timestamp เพื่อไม่ให้ชื่อซ้ำ
-        filename = f"{label}_{int(time.time() * 1000)}.png"
-        
-        # 5. กำหนดเส้นทางที่จะเซฟ (ไปยังโฟลเดอร์คลาสที่สร้างไว้)
-        save_path = os.path.join(DATASET_DIR, label, filename)
+        # --- จุดแก้ไขสำคัญ: สร้างโฟลเดอร์ถ้ายังไม่มี ---
+        target_dir = os.path.join(DATASET_DIR, label)
+        if not os.path.exists(target_dir):
+            os.makedirs(target_dir, exist_ok=True)
+        # ---------------------------------------
 
-        # 6. บันทึกไฟล์
+        filename = f"{label}_{int(time.time() * 1000)}.png"
+        save_path = os.path.join(target_dir, filename)
         image.save(save_path)
 
         return jsonify({"message": "บันทึกสำเร็จ", "filename": filename}), 200
@@ -50,5 +55,12 @@ def upload_canvas():
         print(f"Error: {e}")
         return jsonify({"error": str(e)}), 500
 
+# เพิ่ม Route /predict เพื่อไม่ให้หน้าเว็บค้างเวลาเผลอกดปุ่ม Predict
+@app.route('/predict', methods=['POST'])
+def predict():
+    # ส่วนนี้รอคุณใส่ Model AI ในอนาคต
+    return jsonify({"prediction": "ระบบทำนายยังไม่ติดตั้ง"})
+
 if __name__ == '__main__':
-    app.run(debug=True)
+    # รันบนเครื่องตัวเองใช้ debug=True เพื่อดู error อย่างละเอียด
+    app.run(debug=True, port=5000)
