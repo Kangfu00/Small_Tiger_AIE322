@@ -46,6 +46,8 @@ const setupCanvas = (id, sliderId, valueDisplayId) => {
         const p = getPos(e);
         ctx.lineTo(p.x, p.y);
         ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
     };
     const stop = () => { if (isDrawing) { ctx.closePath(); isDrawing = false; } };
 
@@ -195,3 +197,21 @@ async function loadStats() {
         });
     } catch (e) { statsList.innerHTML = '<p style="color:#dc2626; grid-column:span 2; text-align:center;">❌ โหลดสถิติพัง</p>'; }
 }
+
+function applyTimeTheme() {
+    const hour = new Date().getHours();
+    
+    // กำหนดให้ 06:00 ถึง 17:59 เป็นตอนกลางวัน
+    if (hour >= 6 && hour < 18) {
+        document.body.classList.remove('theme-night');
+    } else {
+        // นอกนั้น (18:00 ถึง 05:59) เป็นตอนกลางคืน
+        document.body.classList.add('theme-night');
+    }
+}
+
+// สั่งให้ทำงานทันทีที่โหลดหน้าเว็บเสร็จ
+applyTimeTheme();
+
+// (ออปชันเสริม) ให้มันเช็คเวลาใหม่ทุกๆ 1 นาที เผื่อคนเปิดเว็บทิ้งไว้ข้ามวันข้ามคืน
+setInterval(applyTimeTheme, 60000);

@@ -19,80 +19,75 @@
         </header>
 
         <section id="collect-page" class="page-content active-page">
-            <div class="main-layout">
-                <div class="control-panel">
-                    <div class="card shadow-sm">
-                        <h3>ตั้งค่าการเขียน</h3>
-                        <p class="label">เลือกตัวเลขที่ต้องการเขียน:</p>
-                        <select id="class-select" class="dropdown">
-                            <option value="56">๕๖ (56)</option>
-                            <option value="57">๕๗ (57)</option>
-                            <option value="58">๕๘ (58)</option>
-                            <option value="59">๕๙ (59)</option>
-                            <option value="60">๖๐ (60)</option>
-                        </select>
-                        
-                        <p class="label">ขนาดหัวแปรง: <span id="size-val-collect">14</span></p>
-                        <input type="range" id="brush-size-collect" min="5" max="40" value="14" class="slider">
-                        
-                        <div class="actions mt-20">
-                            <button class="btn btn-primary full-width" onclick="saveImage()">บันทึกข้อมูล</button>
-                            <button class="btn btn-outline full-width mt-10" onclick="clearCanvas('collect')">ลบกระดาน</button>
-                        </div>
-                        <p id="status-collect" class="status-msg"></p>
-                    </div>
+    <div class="main-layout">
+        <div class="control-panel">
+            <div class="card shadow-sm">
+                <h3>ตั้งค่าการเขียน</h3>
+                <p class="label">เลือกตัวเลขที่ต้องการเขียน:</p>
+                <select id="class-select" class="dropdown">
+                    <option value="56">๕๖ (56)</option>
+                    <option value="57">๕๗ (57)</option>
+                    <option value="58">๕๘ (58)</option>
+                    <option value="59">๕๙ (59)</option>
+                    <option value="60">๖๐ (60)</option>
+                </select>
+                <p class="label">ขนาดหัวแปรง: <span id="size-val-collect">14</span></p>
+                <input type="range" id="brush-size-collect" min="5" max="40" value="14" class="slider">
+                <p id="status-collect" class="status-msg"></p>
+            </div>
 
-                    <div class="card shadow-sm mt-20">
-                        <h3>📊 สถิติข้อมูลปัจจุบัน</h3>
-                        <div id="stats-list" class="stats-grid">
-                            <p class="text-muted">กำลังโหลด...</p>
-                        </div>
-                        <button class="btn btn-outline small-btn mt-10" onclick="loadStats()">🔄 อัปเดตตัวเลข</button>
-                    </div>
+            <div class="card shadow-sm mt-20">
+                <h3>📊 สถิติข้อมูลปัจจุบัน</h3>
+                <div id="stats-list" class="stats-grid">
+                    <p class="text-muted">กำลังโหลด...</p>
                 </div>
+                <button class="btn btn-outline small-btn mt-10" onclick="loadStats()">🔄 อัปเดตตัวเลข</button>
+            </div>
+        </div>
 
-                <div class="canvas-panel">
-                    <div class="card canvas-card">
-                        <div class="canvas-container">
-                            <canvas id="canvas-collect" width="400" height="400"></canvas>
-                        </div>
-                    </div>
+        <div class="canvas-panel">
+            <div class="card canvas-card shadow-sm">
+                <div class="canvas-container">
+                    <canvas id="canvas-collect" width="280" height="280"></canvas>
+                </div>
+                <div class="actions mt-20 full-width">
+                    <button class="btn btn-primary" onclick="saveImage()">บันทึกข้อมูล</button>
+                    <button class="btn btn-outline" onclick="clearCanvas('collect')">ลบกระดาน</button>
                 </div>
             </div>
-        </section>
+        </div>
+    </div>
+</section>
 
-        <section id="predict-page" class="page-content">
-            <div class="main-layout">
-                <div class="control-panel">
-                    <div class="card shadow-sm">
-                        <h3>ทำนายผล</h3>
-                        <p class="instruction">วาดเลขไทยลงบนกระดานด้านขวา</p>
-                        
-                        <p class="label">ขนาดหัวแปรง: <span id="size-val-predict">14</span></p>
-                        <input type="range" id="brush-size-predict" min="5" max="40" value="14" class="slider">
-
-                        <div class="actions mt-20">
-                            <button class="btn btn-primary full-width" onclick="predictImage()">ทำนายผลทันที</button>
-                            <button class="btn btn-outline full-width mt-10" onclick="clearCanvas('predict')">ลบกระดาน</button>
-                        </div>
-
-                        <div id="result-container" class="result-box hidden mt-20">
-                            <span class="result-label">AI ทายว่าเป็นเลข:</span>
-                            <span id="prediction-text" class="result-value">-</span>
-                        </div>
-                        <p id="status-predict" class="status-msg"></p>
-                    </div>
+<section id="predict-page" class="page-content">
+    <div class="main-layout">
+        <div class="control-panel">
+            <div class="card shadow-sm">
+                <h3>การตั้งค่า</h3>
+                <p class="label">ขนาดหัวแปรง: <span id="size-val-predict">14</span></p>
+                <input type="range" id="brush-size-predict" min="5" max="40" value="14" class="slider">
+                
+                <div id="result-container" class="result-box hidden mt-10">
+                    <span class="result-label">AI ทายว่าเป็นเลข:</span>
+                    <span id="prediction-text" class="result-value">-</span>
                 </div>
+                <p id="status-predict" class="status-msg"></p>
+            </div>
+        </div>
 
-                <div class="canvas-panel">
-                    <div class="card canvas-card">
-                        <div class="canvas-container">
-                            <canvas id="canvas-predict" width="400" height="400"></canvas>
-                        </div>
-                    </div>
+        <div class="canvas-panel">
+            <div class="card canvas-card shadow-sm">
+                <div class="canvas-container">
+                    <canvas id="canvas-predict" width="280" height="280"></canvas>
+                </div>
+                <div class="actions mt-20 full-width">
+                    <button class="btn btn-primary" onclick="predictImage()">ทำนายผลทันที</button>
+                    <button class="btn btn-outline" onclick="clearCanvas('predict')">ลบกระดาน</button>
                 </div>
             </div>
-        </section>
+        </div>
+    </div>
+</section>
 
         <section id="admin-page" class="page-content">
             <div class="card shadow-sm max-500 center-margin">

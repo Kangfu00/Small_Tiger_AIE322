@@ -4,84 +4,70 @@ import numpy as np
 import joblib
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix
+from sklearn.metrics import accuracy_score, classification_report
 
-# --- ฟังก์ชันจัดกึ่งกลางอัตโนมัติ ---
-def center_and_resize(img_gray):
-    # แปลงให้หมึกเป็นสีขาว (255) พื้นหลังสีดำ (0) เพื่อให้หาง่าย
-    _, thresh = cv2.threshold(img_gray, 200, 255, cv2.THRESH_BINARY_INV)
-    
-    # หาพิกัดของลายเส้น
-    coords = cv2.findNonZero(thresh)
-    if coords is None:
-        return cv2.resize(img_gray, (28, 28), interpolation=cv2.INTER_AREA)
-    
-    # หา Bounding Box (กรอบสี่เหลี่ยมที่ครอบลายเส้นพอดี)
-    x, y, w, h = cv2.boundingRect(coords)
-    cropped = thresh[y:y+h, x:x+w]
-    
-    # ทำกรอบให้เป็นสี่เหลี่ยมจัตุรัส โดยอิงจากด้านที่ยาวที่สุด
-    max_side = max(w, h)
-    square = np.zeros((max_side, max_side), dtype=np.uint8)
-    
-    # วางลายเส้นลงไปตรงกลางจัตุรัส
-    start_x = (max_side - w) // 2
-    start_y = (max_side - h) // 2
-    square[start_y:start_y+h, start_x:start_x+w] = cropped
-    
-    # ย่อขนาดลงมาที่ 20x20 และเติมขอบขาวด้านละ 4 พิกเซลให้กลายเป็น 28x28 (สูตรเดียวกับ MNIST)
-    resized = cv2.resize(square, (20, 20), interpolation=cv2.INTER_AREA)
-    padded = np.pad(resized, ((4,4), (4,4)), mode='constant', constant_values=0)
-    
-    # แปลงกลับให้พื้นเป็นสีขาว หมึกสีดำ เหมือนภาพต้นฉบับ
-    final_img = cv2.bitwise_not(padded)
-    return final_img
+# ฟังก์ชันเลื่อนภาพ (Data Augmentation)
+def shift_image(image, dx, dy):
+    rows, cols = image.shape
+    M = np.float32([[1, 0, dx], [0, 1, dy]])
+    shifted = cv2.warpAffine(image, M, (cols, rows), borderValue=255)
+    return shifted
 
-# 1. การโหลดและเตรียมข้อมูล
 base_path = 'static/datasets'
 classes = ['56', '57', '58', '59', '60']
+X_raw, y_raw = [], []
 
-X = []
-y = []
-
-print("Loading and centering images...")
+print("1. Loading original images...")
 for class_name in classes:
     folder_path = os.path.join(base_path, class_name)
-    if not os.path.exists(folder_path):
-        continue
+    if not os.path.exists(folder_path): continue
         
     for filename in os.listdir(folder_path):
         img_path = os.path.join(folder_path, filename)
         img = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
         if img is not None:
-            # นำรูปผ่านกระบวนการจัดกึ่งกลางก่อนเก็บเข้า Array
-            centered_img = center_and_resize(img)
-            X.append(centered_img)
-            y.append(class_name) 
+            resized = cv2.resize(img, (28, 28), interpolation=cv2.INTER_AREA)
+            X_raw.append(resized)
+            y_raw.append(class_name) 
 
-X = np.array(X, dtype='float32') / 255.0
-y = np.array(y) 
+# แบ่ง Train/Test
+X_train_raw, X_test_raw, y_train_raw, y_test_raw = train_test_split(X_raw, y_raw, test_size=0.2, random_state=42)
 
-print(f"Total images loaded: {len(X)}")
+print("2. Augmenting Training Data (x5 multiplier)...")
+X_train_aug, y_train_aug = [], []
+for img, label in zip(X_train_raw, y_train_raw):
+    # 1. ใส่รูปดั้งเดิม
+    X_train_aug.append(img)
+    y_train_aug.append(label)
+    
+    # 2. ใส่รูปที่เลื่อนตำแหน่ง (ซ้าย, ขวา, บน, ล่าง)
+    for dx, dy in ((2,0), (-2,0), (0,2), (0,-2)):
+        X_train_aug.append(shift_image(img, dx, dy))
+        # --- แก้ไขตรงนี้: เพิ่ม Label ให้กับรูปที่ถูกเลื่อนด้วย! ---
+        y_train_aug.append(label) 
 
-X_ml = X.reshape(-1, 28 * 28)
-X_train, X_test, y_train, y_test = train_test_split(X_ml, y, test_size=0.2, random_state=42)
+# แปลงเป็น NumPy Array และ Normalize (0-1)
+X_train = np.array(X_train_aug, dtype='float32').reshape(-1, 28 * 28) / 255.0
+y_train = np.array(y_train_aug)
 
-# 2. สร้างและเทรน Random Forest (อัปเกรดเป็น 300 ต้น)
-print("Training Random Forest (300 estimators)...")
+X_test = np.array(X_test_raw, dtype='float32').reshape(-1, 28 * 28) / 255.0
+y_test = np.array(y_test_raw)
+
+print(f"Total training samples: {len(X_train)} | Total labels: {len(y_train)}")
+
+print("3. Training Robust Random Forest (300 trees)...")
 rf_model = RandomForestClassifier(n_estimators=300, random_state=42, n_jobs=-1)
 rf_model.fit(X_train, y_train)
 
-# ฟังก์ชันประเมินผล
+print("4. Evaluating Model...")
 y_pred = rf_model.predict(X_test)
 acc = accuracy_score(y_test, y_pred)
-cm = confusion_matrix(y_test, y_pred, labels=classes)
+print(f"=============================")
+print(f"FINAL ACCURACY: {acc:.4f} ({(acc*100):.2f}%)")
+print(f"=============================")
+print(classification_report(y_test, y_pred))
 
-print(f"--- Random Forest ---")
-print(f"Accuracy:  {acc:.4f}")
-print("Confusion Matrix:\n", cm)
-print("-" * 20)
-
-# 3. บันทึกโมเดล
-joblib.dump(rf_model, 'random_forest_model.pkl')
-print("Saved upgraded model to 'random_forest_model.pkl'")
+# บันทึกโมเดล
+os.makedirs('models', exist_ok=True)
+joblib.dump(rf_model, 'models/random_forest_model.pkl')
+print("Saved perfectly to 'models/random_forest_model.pkl'")

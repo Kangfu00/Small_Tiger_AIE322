@@ -16,7 +16,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATASET_DIR = os.path.join(BASE_DIR, 'static', 'datasets')
 MODEL_DIR = os.path.join(BASE_DIR, 'models')
 # ใช้ชื่อไฟล์โมเดล Random Forest ที่คุณมี
-MODEL_PATH = os.path.join(MODEL_DIR, 'random_forest_model_v1.joblib')
+MODEL_PATH = os.path.join(MODEL_DIR, 'random_forest_model.pkl')
 
 os.makedirs(DATASET_DIR, exist_ok=True)
 os.makedirs(MODEL_DIR, exist_ok=True)
@@ -57,41 +57,46 @@ def index():
 
 @app.route('/predict', methods=['POST'])
 def predict():
-    global model
     try:
-        if model is None:
-            return jsonify({'error': 'ไม่พบไฟล์โมเดลในระบบ'}), 404
-
         data = request.get_json()
-        image_data = data['image']
+        image_data = data['image'] 
         
-        header, encoded = image_data.split(',', 1)
+        # 1. โหลดโมเดล
+        model_path = os.path.join(MODEL_DIR, 'random_forest_model.pkl')
+        if not os.path.exists(model_path):
+            return jsonify({"error": "ไม่พบไฟล์โมเดล"}), 404
+        rf_model = joblib.load(model_path)
+
+        # 2. แปลงรูปจาก Base64
+        header, encoded = image_data.split(",", 1)
         image_bytes = base64.b64decode(encoded)
         image = Image.open(io.BytesIO(image_bytes))
 
-        background = Image.new('RGB', image.size, (255, 255, 255))
+        # แก้ไขปัญหาพื้นหลังโปร่งใส
+        background = Image.new("RGB", image.size, (255, 255, 255))
         if image.mode == 'RGBA':
             background.paste(image, mask=image.split()[3])
         else:
             background.paste(image)
         
-        img_gray = np.array(background.convert('L'))
-        processed_img = center_and_resize(img_gray)
-        img_array = processed_img.reshape(1, -1).astype('float32') / 255.0
+        # 3. Preprocessing แบบดั้งเดิม (ที่เคยทำงานได้ดี)
+        img_array = np.array(background) 
+        gray = cv2.cvtColor(img_array, cv2.COLOR_RGB2GRAY)
+        
+        # ย่อรูปลงมาดื้อๆ เลย ไม่ต้องจัดกึ่งกลางแล้ว
+        resized = cv2.resize(gray, (28, 28), interpolation=cv2.INTER_AREA)
+        
+        # Normalize และเตรียมข้อมูล
+        normalized = resized.astype('float32') / 255.0
+        img_ml = normalized.reshape(1, 28 * 28)
 
-        prediction = model.predict(img_array)[0]
-        try:
-            probs = model.predict_proba(img_array)
-            confidence = float(np.max(probs))
-        except:
-            confidence = 0.0
+        # 4. ทำนายผล
+        prediction_result = rf_model.predict(img_ml)[0]
 
-        return jsonify({
-            'prediction': str(prediction),
-            'confidence': f'{confidence * 100:.2f}%'
-        })
+        return jsonify({"prediction": prediction_result}), 200
+
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/upload', methods=['POST'])
 def upload_canvas():
