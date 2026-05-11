@@ -5,6 +5,9 @@ from flask import Flask, render_template, request, jsonify
 from PIL import Image
 import io
 from werkzeug.utils import secure_filename
+import joblib
+import numpy as np
+import cv2
 
 app = Flask(__name__)
 
@@ -16,6 +19,26 @@ MODEL_DIR = os.path.join(BASE_DIR, 'models') # โฟลเดอร์เก็
 # สร้างโฟลเดอร์ที่จำเป็นหากยังไม่มี
 os.makedirs(DATASET_DIR, exist_ok=True)
 os.makedirs(MODEL_DIR, exist_ok=True)
+
+def center_and_resize(img_gray):
+    _, thresh = cv2.threshold(img_gray, 200, 255, cv2.THRESH_BINARY_INV)
+    coords = cv2.findNonZero(thresh)
+    if coords is None:
+        return cv2.resize(img_gray, (28, 28), interpolation=cv2.INTER_AREA)
+    
+    x, y, w, h = cv2.boundingRect(coords)
+    cropped = thresh[y:y+h, x:x+w]
+    max_side = max(w, h)
+    square = np.zeros((max_side, max_side), dtype=np.uint8)
+    
+    start_x = (max_side - w) // 2
+    start_y = (max_side - h) // 2
+    square[start_y:start_y+h, start_x:start_x+w] = cropped
+    
+    resized = cv2.resize(square, (20, 20), interpolation=cv2.INTER_AREA)
+    padded = np.pad(resized, ((4,4), (4,4)), mode='constant', constant_values=0)
+    final_img = cv2.bitwise_not(padded)
+    return final_img
 
 @app.route('/')
 def index():
@@ -82,8 +105,44 @@ def admin_upload_model():
 
 @app.route('/predict', methods=['POST'])
 def predict():
-    # ในอนาคตคุณจะใช้โค้ดเรียกไฟล์จาก models/model_latest.h5 มาทายผล
-    return jsonify({"prediction": "โมเดลติดตั้งแล้ว (รอการเชื่อมต่อ logic)"})
+    try:
+        data = request.get_json()
+        image_data = data['image'] 
+        
+        # โหลดโมเดล
+        model_path = os.path.join(MODEL_DIR, 'random_forest_model.pkl')
+        if not os.path.exists(model_path):
+            return jsonify({"error": "ไม่พบไฟล์โมเดล"}), 404
+        rf_model = joblib.load(model_path)
+
+        # แปลงรูปจาก Base64
+        header, encoded = image_data.split(",", 1)
+        image_bytes = base64.b64decode(encoded)
+        image = Image.open(io.BytesIO(image_bytes))
+
+        # แก้ไขพื้นหลังโปร่งใส
+        background = Image.new("RGB", image.size, (255, 255, 255))
+        if image.mode == 'RGBA':
+            background.paste(image, mask=image.split()[3])
+        else:
+            background.paste(image)
+        
+        # ขั้นตอนสำคัญ: ใช้ฟังก์ชันจัดกึ่งกลางเหมือนตอนเทรนเป๊ะๆ
+        img_array = np.array(background) 
+        gray = cv2.cvtColor(img_array, cv2.COLOR_RGB2GRAY)
+        centered = center_and_resize(gray)
+        
+        # Normalize และปรับให้เป็น 1D Array
+        normalized = centered.astype('float32') / 255.0
+        img_ml = normalized.reshape(1, 28 * 28)
+
+        # ทำนายผล
+        prediction_result = rf_model.predict(img_ml)[0]
+
+        return jsonify({"prediction": prediction_result}), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 import shutil # เพิ่มสำหรับบีบอัดไฟล์
 from flask import send_file # เพิ่มสำหรับส่งไฟล์ให้ดาวน์โหลด
