@@ -49,17 +49,19 @@
 
         <section id="predict-page" class="page-content" style="display: none;">
             <div class="card">
-                <div class="instruction">วาดตัวเลขไทยเพื่อให้ AI ทำนายผล</div>
+                <div class="instruction">วาดตัวเลขไทย (๕๖-๖๐) เพื่อให้ AI ทำนาย</div>
                 <div class="canvas-wrapper">
                     <canvas id="canvas-predict" width="280" height="280"></canvas>
                 </div>
                 <div class="button-group">
-                    <button class="btn btn-secondary" onclick="clearCanvas('predict')">Clear</button>
-                    <button class="btn btn-accent" onclick="predictImage()">Predict Now</button>
+                    <button class="btn btn-secondary" onclick="clearCanvas('predict')">ล้างหน้าจอ</button>
+                    <button class="btn btn-accent" onclick="predictImage()">ทำนายผลลัพธ์</button>
                 </div>
-                <div id="result-container" class="result-box" style="display: none;">
-                    <span class="result-label">ผลการทำนาย:</span>
-                    <span id="prediction-text" class="result-value">-</span>
+                
+                <div id="result-container" class="result-box" style="display: none; margin-top: 20px; padding: 20px; background: #f8f9fa; border-radius: 15px; border: 2px solid #0984e3;">
+                    <div style="font-size: 0.9em; color: #636e72;">AI ทำนายว่าเป็นเลข:</div>
+                    <div id="prediction-text" style="font-size: 3em; font-weight: bold; color: #0984e3; margin: 10px 0;">-</div>
+                    <div style="font-size: 0.8em; color: #b2bec3;">ความมั่นใจ: <span id="confidence-text">-</span></div>
                 </div>
                 <p id="status-predict" class="status-msg"></p>
             </div>
@@ -314,6 +316,35 @@
             
             if (page === 'admin') {
                 loadStats(); // โหลดสถิติอัตโนมัติเมื่อกดเข้าหน้า Admin
+            }
+        }
+
+        async function predictImage() {
+            const dataURL = predictObj.canvas.toDataURL('image/png');
+            const resText = document.getElementById('prediction-text');
+            const confText = document.getElementById('confidence-text');
+            const resBox = document.getElementById('result-container');
+            const status = document.getElementById('status-predict');
+
+            status.innerText = "กำลังประมวลผล...";
+            try {
+                const res = await fetch('/predict', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ image: dataURL })
+                });
+                const data = await res.json();
+                
+                if (data.prediction) {
+                    resBox.style.display = "block";
+                    resText.innerText = data.prediction;
+                    confText.innerText = data.confidence;
+                    status.innerText = "";
+                } else {
+                    status.innerText = "Error: " + data.error;
+                }
+            } catch (e) {
+                status.innerText = "ไม่สามารถเชื่อมต่อกับ Server ได้";
             }
         }
 
