@@ -3,351 +3,112 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Thai Digits AI - Collection & Prediction</title>
+    <title>Thai Digits AI ๕๖-๖๐</title>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <link href="https://fonts.googleapis.com/css2?family=Anuphan:wght@300;400;500&display=swap" rel="stylesheet">
-    <style>
-        /* เพิ่มเติมเล็กน้อยสำหรับหน้า Admin */
-        .admin-form { display: flex; flex-direction: column; gap: 15px; }
-        .file-input-wrapper { border: 2px dashed #dfe6e9; padding: 20px; border-radius: 12px; cursor: pointer; }
-        .file-input-wrapper:hover { border-color: #0984e3; }
-        input[type="password"] { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #dfe6e9; font-family: inherit; }
-    </style>
 </head>
 <body>
-
     <div class="container">
         <header>
             <h1>Thai Digits <span class="accent">๕๖-๖๐</span></h1>
-            <nav>
-                <button onclick="showPage('collect')" id="btn-nav-collect" class="nav-link active">Collect</button>
-                <button onclick="showPage('predict')" id="btn-nav-predict" class="nav-link">Predict AI</button>
-                <button onclick="showPage('admin')" id="btn-nav-admin" class="nav-link">Admin</button>
+            <nav class="tabs">
+                <button onclick="showPage('collect')" id="btn-nav-collect" class="tab-btn active">เก็บข้อมูล & สถิติ</button>
+                <button onclick="showPage('predict')" id="btn-nav-predict" class="tab-btn">ทดสอบ AI</button>
+                <button onclick="showPage('admin')" id="btn-nav-admin" class="tab-btn">ตั้งค่าระบบ</button>
             </nav>
         </header>
 
-        <section id="collect-page" class="page-content">
-            <div class="card">
-                <div class="instruction">เลือกตัวเลขที่ต้องการเขียนและวาดลงในช่อง</div>
-                <select id="class-select">
-                    <option value="56">๕๖ (56)</option>
-                    <option value="57">๕๗ (57)</option>
-                    <option value="58">๕๘ (58)</option>
-                    <option value="59">๕๙ (59)</option>
-                    <option value="60">๖๐ (60)</option>
-                </select>
-                <div class="canvas-wrapper">
-                    <canvas id="canvas-collect" width="280" height="280"></canvas>
-                </div>
-                <div class="button-group">
-                    <button class="btn btn-secondary" onclick="clearCanvas('collect')">Clear</button>
-                    <button class="btn btn-primary" onclick="saveImage()">Save Data</button>
-                </div>
-                <p id="status-collect" class="status-msg"></p>
-            </div>
-        </section>
-
-        <section id="predict-page" class="page-content" style="display: none;">
-            <div class="card">
-                <div class="instruction">วาดตัวเลขไทย (๕๖-๖๐) เพื่อให้ AI ทำนาย</div>
-                <div class="canvas-wrapper">
-                    <canvas id="canvas-predict" width="280" height="280"></canvas>
-                </div>
-                <div class="button-group">
-                    <button class="btn btn-secondary" onclick="clearCanvas('predict')">ล้างหน้าจอ</button>
-                    <button class="btn btn-accent" onclick="predictImage()">ทำนายผลลัพธ์</button>
-                </div>
-                
-                <div id="result-container" class="result-box" style="display: none; margin-top: 20px; padding: 20px; background: #f8f9fa; border-radius: 15px; border: 2px solid #0984e3;">
-                    <div style="font-size: 0.9em; color: #636e72;">AI ทำนายว่าเป็นเลข:</div>
-                    <div id="prediction-text" style="font-size: 3em; font-weight: bold; color: #0984e3; margin: 10px 0;">-</div>
-                    <div style="font-size: 0.8em; color: #b2bec3;">ความมั่นใจ: <span id="confidence-text">-</span></div>
-                </div>
-                <p id="status-predict" class="status-msg"></p>
-            </div>
-        </section>
-
-        <section id="admin-page" class="page-content" style="display: none;">
-            <div class="card">
-                <div class="instruction">สำหรับผู้ดูแลระบบ: จัดการข้อมูลและโมเดล</div>
-                
-                <form id="admin-action-form" class="admin-form">
-                    <input type="password" id="admin-password-global" placeholder="ใส่รหัสผ่านเพื่อดำเนินการ" required>
-                    
-                    <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
-                    
-                    <div style="margin-bottom: 20px;">
-                        <p style="font-size: 0.9em; color: #636e72;">ดาวน์โหลดรูปภาพทั้งหมดที่มีในระบบ (.zip)</p>
-                        <button type="button" class="btn btn-secondary" style="width: 100%;" onclick="downloadDatasets()">
-                            📥 Download All Datasets
-                        </button>
-                    </div>
-
-                    <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
-
-                    <div class="file-input-wrapper" onclick="document.getElementById('model-file').click()">
-                        <span id="file-name-display">คลิกเพื่อเลือกไฟล์โมเดลใหม่</span>
-                        <input type="file" id="model-file" style="display: none;" onchange="updateFileName()">
-                    </div>
-                    <button type="button" class="btn btn-primary" onclick="uploadModel()">Upload Model</button>
-                    
-                    <div id="stats-container" style="margin-bottom: 20px;">
-                        <h3 style="font-size: 1.1em; margin-bottom: 10px;">📊 สถิติข้อมูลปัจจุบัน</h3>
-                        <div id="stats-list" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
-                            <p style="grid-column: span 2; color: #b2bec3;">กำลังโหลดข้อมูล...</p>
+        <section id="collect-page" class="page-content active-page">
+            <div class="main-layout">
+                <div class="control-panel">
+                    <div class="card shadow-sm">
+                        <h3>ตั้งค่าการเขียน</h3>
+                        <p class="label">เลือกตัวเลขที่ต้องการเขียน:</p>
+                        <select id="class-select" class="dropdown">
+                            <option value="56">๕๖ (56)</option>
+                            <option value="57">๕๗ (57)</option>
+                            <option value="58">๕๘ (58)</option>
+                            <option value="59">๕๙ (59)</option>
+                            <option value="60">๖๐ (60)</option>
+                        </select>
+                        
+                        <p class="label">ขนาดหัวแปรง: <span id="size-val-collect">14</span></p>
+                        <input type="range" id="brush-size-collect" min="5" max="40" value="14" class="slider">
+                        
+                        <div class="actions mt-20">
+                            <button class="btn btn-primary full-width" onclick="saveImage()">บันทึกข้อมูล</button>
+                            <button class="btn btn-outline full-width mt-10" onclick="clearCanvas('collect')">ลบกระดาน</button>
                         </div>
-                        <button type="button" class="btn btn-secondary" style="margin-top: 10px; font-size: 0.8em; padding: 5px 10px;" onclick="loadStats()">
-                            🔄 อัปเดตตัวเลข
-                        </button>
+                        <p id="status-collect" class="status-msg"></p>
                     </div>
 
-                </form>
+                    <div class="card shadow-sm mt-20">
+                        <h3>📊 สถิติข้อมูลปัจจุบัน</h3>
+                        <div id="stats-list" class="stats-grid">
+                            <p class="text-muted">กำลังโหลด...</p>
+                        </div>
+                        <button class="btn btn-outline small-btn mt-10" onclick="loadStats()">🔄 อัปเดตตัวเลข</button>
+                    </div>
+                </div>
+
+                <div class="canvas-panel">
+                    <div class="card canvas-card">
+                        <div class="canvas-container">
+                            <canvas id="canvas-collect" width="400" height="400"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="predict-page" class="page-content">
+            <div class="main-layout">
+                <div class="control-panel">
+                    <div class="card shadow-sm">
+                        <h3>ทำนายผล</h3>
+                        <p class="instruction">วาดเลขไทยลงบนกระดานด้านขวา</p>
+                        
+                        <p class="label">ขนาดหัวแปรง: <span id="size-val-predict">14</span></p>
+                        <input type="range" id="brush-size-predict" min="5" max="40" value="14" class="slider">
+
+                        <div class="actions mt-20">
+                            <button class="btn btn-primary full-width" onclick="predictImage()">ทำนายผลทันที</button>
+                            <button class="btn btn-outline full-width mt-10" onclick="clearCanvas('predict')">ลบกระดาน</button>
+                        </div>
+
+                        <div id="result-container" class="result-box hidden mt-20">
+                            <span class="result-label">AI ทายว่าเป็นเลข:</span>
+                            <span id="prediction-text" class="result-value">-</span>
+                        </div>
+                        <p id="status-predict" class="status-msg"></p>
+                    </div>
+                </div>
+
+                <div class="canvas-panel">
+                    <div class="card canvas-card">
+                        <div class="canvas-container">
+                            <canvas id="canvas-predict" width="400" height="400"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="admin-page" class="page-content">
+            <div class="card shadow-sm max-500 center-margin">
+                <h2>Admin Panel</h2>
+                <input type="password" id="admin-password-global" class="input-field" placeholder="ใส่รหัสผ่าน">
+                <button class="btn btn-secondary full-width" onclick="downloadDatasets()">📥 ดาวน์โหลด Dataset (.zip)</button>
+                <hr class="my-20">
+                <div class="file-drop-area" onclick="document.getElementById('model-file').click()">
+                    <span id="file-name-display">คลิกเพื่อเปลี่ยนไฟล์โมเดล (.pkl)</span>
+                    <input type="file" id="model-file" hidden onchange="updateFileName()">
+                </div>
+                <button class="btn btn-primary full-width mt-10" onclick="uploadModel()">อัปโหลดโมเดลใหม่</button>
                 <p id="status-admin" class="status-msg"></p>
             </div>
         </section>
     </div>
-
-
-    <script>
-        // --- Navigation ---
-        function showPage(page) {
-            document.querySelectorAll('.page-content').forEach(p => p.style.display = 'none');
-            document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-            document.getElementById(page + '-page').style.display = 'block';
-            document.getElementById('btn-nav-' + page).classList.add('active');
-        }
-
-        // --- Canvas Setup ---
-        const setupCanvas = (id) => {
-            const canvas = document.getElementById(id);
-            const ctx = canvas.getContext('2d');
-            let isDrawing = false;
-            ctx.lineWidth = 12; ctx.lineCap = 'round'; ctx.strokeStyle = '#2d3436';
-            ctx.fillStyle = "white"; ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            const getPos = (e) => {
-                const rect = canvas.getBoundingClientRect();
-                const cx = e.touches ? e.touches[0].clientX : e.clientX;
-                const cy = e.touches ? e.touches[0].clientY : e.clientY;
-                return { x: cx - rect.left, y: cy - rect.top };
-            };
-
-            const start = (e) => { isDrawing = true; draw(e); };
-            const stop = () => { isDrawing = false; ctx.beginPath(); };
-            const draw = (e) => {
-                if (!isDrawing) return;
-                const p = getPos(e);
-                ctx.lineTo(p.x, p.y); ctx.stroke();
-                ctx.beginPath(); ctx.moveTo(p.x, p.y);
-            };
-
-            canvas.addEventListener('mousedown', start); canvas.addEventListener('mousemove', draw);
-            canvas.addEventListener('mouseup', stop);
-            canvas.addEventListener('touchstart', (e) => { e.preventDefault(); start(e); });
-            canvas.addEventListener('touchmove', (e) => { e.preventDefault(); draw(e); });
-            canvas.addEventListener('touchend', stop);
-            return { canvas, ctx };
-        };
-
-        const collectObj = setupCanvas('canvas-collect');
-        const predictObj = setupCanvas('canvas-predict');
-
-        function clearCanvas(type) {
-            const obj = type === 'collect' ? collectObj : predictObj;
-            obj.ctx.fillStyle = "white"; obj.ctx.fillRect(0, 0, obj.canvas.width, obj.canvas.height);
-            document.getElementById('status-' + type).innerText = "";
-            if(type === 'predict') document.getElementById('result-container').style.display = 'none';
-        }
-
-        // --- API - Collect ---
-        async function saveImage() {
-            const label = document.getElementById('class-select').value;
-            const dataURL = collectObj.canvas.toDataURL('image/png');
-            const msg = document.getElementById('status-collect');
-            msg.innerText = "กำลังบันทึก...";
-            try {
-                const res = await fetch('/upload', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ image: dataURL, label: label })
-                });
-                if (res.ok) { 
-                    msg.innerText = "บันทึกสำเร็จ!"; msg.style.color = "#27ae60";
-                    setTimeout(() => clearCanvas('collect'), 1000);
-                }
-            } catch (e) { msg.innerText = "Error: เชื่อมต่อไม่ได้"; }
-        }
-
-        // --- API - Predict ---
-        async function predictImage() {
-            const dataURL = predictObj.canvas.toDataURL('image/png');
-            const resText = document.getElementById('prediction-text');
-            const resBox = document.getElementById('result-container');
-            try {
-                const res = await fetch('/predict', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ image: dataURL })
-                });
-                const data = await res.json();
-                resBox.style.display = "block";
-                resText.innerText = data.prediction;
-            } catch (e) { alert("Error"); }
-        }
-
-        // --- Admin Functions ---
-        function updateFileName() {
-            const file = document.getElementById('model-file').files[0];
-            document.getElementById('file-name-display').innerText = file ? file.name : "คลิกเพื่อเลือกไฟล์โมเดล";
-        }
-
-        async function uploadModel() {
-            const fileInput = document.getElementById('model-file');
-            const password = document.getElementById('admin-password').value;
-            const msg = document.getElementById('status-admin');
-
-            if (!fileInput.files[0] || !password) {
-                msg.innerText = "กรุณาเลือกไฟล์และใส่รหัสผ่าน";
-                msg.style.color = "red";
-                return;
-            }
-
-            const formData = new FormData();
-            formData.append('model_file', fileInput.files[0]);
-            formData.append('admin_pass', password);
-
-            msg.innerText = "กำลังอัปโหลด...";
-            try {
-                const res = await fetch('/admin_upload_model', {
-                    method: 'POST',
-                    body: formData
-                });
-                const data = await res.json();
-                if (res.ok) {
-                    msg.innerText = data.message;
-                    msg.style.color = "green";
-                } else {
-                    msg.innerText = data.error;
-                    msg.style.color = "red";
-                }
-            } catch (e) { msg.innerText = "เกิดข้อผิดพลาดในการเชื่อมต่อ"; }
-        }
-        
-        async function downloadDatasets() {
-            const password = document.getElementById('admin-password-global').value;
-            const msg = document.getElementById('status-admin');
-
-            if (!password) {
-                msg.innerText = "กรุณาใส่รหัสผ่าน";
-                msg.style.color = "red";
-                return;
-            }
-
-            msg.innerText = "กำลังเตรียมไฟล์ Zip... (อาจใช้เวลาครู่หนึ่ง)";
-            msg.style.color = "#0984e3";
-
-            try {
-                const formData = new FormData();
-                formData.append('admin_pass', password);
-
-                const res = await fetch('/admin_download_datasets', {
-                    method: 'POST',
-                    body: formData
-                });
-
-                if (res.ok) {
-                    // เทคนิคการทำให้ Browser ดาวน์โหลดไฟล์จาก Blob
-                    const blob = await res.blob();
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = "datasets_backup.zip"; // ชื่อไฟล์ที่ผู้ใช้จะได้รับ
-                    document.body.appendChild(a);
-                    a.click();
-                    a.remove();
-                    
-                    msg.innerText = "ดาวน์โหลดเริ่มขึ้นแล้ว!";
-                    msg.style.color = "green";
-                } else {
-                    const data = await res.json();
-                    msg.innerText = data.error || "รหัสผ่านไม่ถูกต้อง";
-                    msg.style.color = "red";
-                }
-            } catch (e) {
-                msg.innerText = "เกิดข้อผิดพลาดในการเชื่อมต่อ";
-                msg.style.color = "red";
-            }
-        }
-        // ฟังก์ชันสำหรับโหลดสถิติจำนวนภาพ
-        async function loadStats() {
-            const statsList = document.getElementById('stats-list');
-            try {
-                const res = await fetch('/admin_stats');
-                const data = await res.json();
-                
-                if (Object.keys(data).length === 0) {
-                    statsList.innerHTML = '<p style="grid-column: span 2;">ยังไม่มีข้อมูล</p>';
-                    return;
-                }
-
-                statsList.innerHTML = ''; // ล้างค่าเก่า
-                // เรียงลำดับคลาสตามตัวเลข
-                Object.keys(data).sort().forEach(label => {
-                    const item = document.createElement('div');
-                    item.style.cssText = "background: #f1f2f6; padding: 10px; border-radius: 8px; text-align: center;";
-                    item.innerHTML = `
-                        <div style="font-weight: bold; color: #0984e3;">คลาส ${label}</div>
-                        <div style="font-size: 1.2em;">${data[label]} ภาพ</div>
-                    `;
-                    statsList.appendChild(item);
-                });
-            } catch (e) {
-                statsList.innerHTML = '<p style="color: red;">โหลดสถิติไม่สำเร็จ</p>';
-            }
-        }
-
-        // เรียกใช้ loadStats ทุกครั้งที่เปิดหน้า Admin
-        // แก้ไขฟังก์ชัน showPage เดิมของคุณเพิ่มบรรทัดนี้เข้าไป:
-        function showPage(page) {
-            document.querySelectorAll('.page-content').forEach(p => p.style.display = 'none');
-            document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-            document.getElementById(page + '-page').style.display = 'block';
-            document.getElementById('btn-nav-' + page).classList.add('active');
-            
-            if (page === 'admin') {
-                loadStats(); // โหลดสถิติอัตโนมัติเมื่อกดเข้าหน้า Admin
-            }
-        }
-
-        async function predictImage() {
-            const dataURL = predictObj.canvas.toDataURL('image/png');
-            const resText = document.getElementById('prediction-text');
-            const confText = document.getElementById('confidence-text');
-            const resBox = document.getElementById('result-container');
-            const status = document.getElementById('status-predict');
-
-            status.innerText = "กำลังประมวลผล...";
-            try {
-                const res = await fetch('/predict', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ image: dataURL })
-                });
-                const data = await res.json();
-                
-                if (data.prediction) {
-                    resBox.style.display = "block";
-                    resText.innerText = data.prediction;
-                    confText.innerText = data.confidence;
-                    status.innerText = "";
-                } else {
-                    status.innerText = "Error: " + data.error;
-                }
-            } catch (e) {
-                status.innerText = "ไม่สามารถเชื่อมต่อกับ Server ได้";
-            }
-        }
-
-    </script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
 </html>
