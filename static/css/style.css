@@ -1,8 +1,10 @@
 :root {
-    --bg-gradient: linear-gradient(-45deg, #f8fafc, #e0e7ff, #f3e8ff, #ccfbf1);
-    --card-bg: rgba(255, 255, 255, 0.8); /* กล่องขาวจาง 80% */
-    --text-main: #0f172a;   /* สีเกือบดำ */
-    --accent-color: #2563eb; /* น้ำเงินเข้ม */
+    --bg-gradient: linear-gradient(-45deg, #dbeafe, #93c5fd, #d8b4fe, #86efac);
+    /* ลดเหลือ 0.4 (40%) จะใสและเห็นกราเดียนต์ชัดเจนมาก */
+    --card-bg: rgba(255, 255, 255, 0.4); 
+    --text-main: #0f172a;   
+    --accent-color: #2563eb;
+    --border-color: rgba(255, 255, 255, 0.3);
 }
 
 /* --- Night Theme (จุดที่ต้องเน้น) --- */
@@ -10,10 +12,12 @@ body.theme-night h1 {
     text-shadow: 0 0 15px rgba(255, 255, 255, 0.4); /* ทำให้ตัวหนังสือเรืองแสงอ่อนๆ */
 }
 body.theme-night {
-    --bg-gradient: linear-gradient(-45deg, #020617, #1e1b4b, #0f172a, #020617);
-    --card-bg: rgba(30, 41, 59, 0.8); /* กล่องน้ำเงินเข้มจาง 80% */
-    --text-main: #ffffff;   /* บังคับเป็นสีขาวบริสุทธิ์เพื่อให้เด่นออกมา */
-    --accent-color: #38bdf8; /* ปรับสีฟ้าให้สว่างและนวลขึ้น (Neon Blue) */
+    --bg-gradient: linear-gradient(-45deg, #0f172a, #312e81, #1e3a8a, #064e3b);
+    /* ธีมมืดใช้ 0.5 (50%) กำลังสวยครับ */
+    --card-bg: rgba(30, 41, 59, 0.5); 
+    --text-main: #ffffff;   
+    --accent-color: #38bdf8; 
+    --border-color: rgba(255, 255, 255, 0.1);
 }
 @keyframes gradientBG {
     0% { background-position: 0% 50%; }
@@ -53,10 +57,27 @@ h1 {
 
 /* --- อัปเดตส่วนอื่นๆ ให้สีเปลี่ยนตามธีม --- */
 .card {
-    background: var(--card-bg);
-    backdrop-filter: blur(10px); /* เพิ่มเอฟเฟกต์กระจกฝ้าให้ดูหรูขึ้น */
+    /* ใช้สีพื้นหลังจากตัวแปร card-bg ซึ่งเราจะเซ็ตเป็น RGBA (โปร่งใส) */
+    background: var(--card-bg) !important; 
+    
+    /* เพิ่มเอฟเฟกต์กระจกฝ้า (Blur) ให้เห็นสีพื้นหลังแบบนวลๆ */
+    backdrop-filter: blur(12px); 
+    -webkit-backdrop-filter: blur(12px); /* สำหรับ Safari */
+    
+    border: 1px solid var(--border-color);
+    border-radius: 28px;
+    padding: 30px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    
     color: var(--text-main);
-    border: 1px solid rgba(255, 255, 255, 0.1); /* ขอบบางๆ ช่วยให้กล่องดูเด่น */
+    transition: all 0.8s ease;
+    
+    /* จัดเลย์เอาต์ */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
 }
 
 /* ปรับสีตัวหนังสือในสถิติและคำแนะนำ */
@@ -81,7 +102,21 @@ canvas {
 
 * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Sarabun', sans-serif; }
 .container { width: 100%; max-width: 500px; }
-header { text-align: center; margin-bottom: 25px; }
+header h1 {
+    /* ใช้สีตามตัวแปร --text-main และบังคับให้ชนะทุกกฎด้วย !important */
+    color: var(--text-main) !important; 
+    font-size: 2.8rem;
+    font-weight: 800;
+    margin-bottom: 10px;
+    transition: all 0.8s ease;
+    /* เพิ่มเงาเล็กน้อยช่วยให้อ่านง่ายขึ้น */
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); 
+}
+
+header h1 .accent {
+    color: var(--accent-color) !important;
+    transition: all 0.8s ease;
+}
 .accent { color: #2563eb; }
 
 .tabs { display: flex; gap: 8px; margin-top: 15px; background: #e2e8f0; padding: 6px; border-radius: 14px; }
@@ -92,7 +127,6 @@ header { text-align: center; margin-bottom: 25px; }
 .page-content.active-page { display: block; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-.card { background: white; padding: 30px 25px; border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.04); text-align: center; border: 1px solid #f1f5f9; }
 h2 { font-size: 1.4rem; margin-bottom: 8px; color: #334155; }
 .instruction { color: #64748b; margin-bottom: 20px; font-size: 0.95rem; }
 
@@ -186,7 +220,6 @@ canvas { border: 2px dashed #cbd5e1; border-radius: 20px; cursor: crosshair; bac
 
 .canvas-card {
     padding: 25px; /* เพิ่มพื้นที่รอบๆ */
-    background: #ffffff;
     border-radius: 24px;
     display: flex;
     flex-direction: column; /* จัดเรียงเป็นแนวตั้ง */
